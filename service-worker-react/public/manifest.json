@@ -1,0 +1,24 @@
+{
+    "theme_color": "#e5d5fb",
+    "background_color": "#9bfdf2",
+    "orientation": "landscape",
+    "display": "standalone",
+    "dir": "auto",
+    "lang": "en",
+    "name": "Service Worker",
+    "short_name": "Service Worker",
+    "start_url": ".",
+    "description": "User balance tool",
+    "icons": [
+        {
+            "src": "logo192.png",
+            "type": "image/png",
+            "sizes": "192x192"
+        },
+        {
+            "src": "logo512.png",
+            "type": "image/png",
+            "sizes": "512x512"
+        }
+    ]
+}
