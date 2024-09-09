@@ -3,7 +3,7 @@ const API_RESPONSES_CACHE_NAME = 'serviceWorker-api-v1';
 
 const CACHE_NAMES = [STATIC_FILES_CACHE_NAME, API_RESPONSES_CACHE_NAME];
 
-//const requestSwitcherHandler = requestSwitcher();
+const requestSwitcherHandler = requestSwitcher();
 
 self.addEventListener('install', async (event) => {
     console.log('Service worker install', event);
@@ -32,7 +32,7 @@ self.addEventListener('fetch', async (event) => {
             (async () => {
                 const cache = await caches.open(API_RESPONSES_CACHE_NAME);
                 try {
-                    const response = await fetch(request);
+                    const response = await requestSwitcherHandler(request);
                     await cache.put(request, response.clone());
                     return response;
                 } catch {
@@ -64,6 +64,7 @@ self.addEventListener('fetch', async (event) => {
 
 function requestSwitcher() {
     const SERVER_DOMAINS = ['http://localhost:5200', 'https://localhost:7235'];
+    let currentDomain = SERVER_DOMAINS[0];
 
     const MAX_ALLOWED_REQUESTS_DISTANCE = 5;
 
@@ -79,10 +80,9 @@ function requestSwitcher() {
 
     return (request) => {
         const url = new URL(request.url);
-        let currentDomain = url.origin;
         if (requestUrlMap.has(currentDomain)) {
             const countOfRequests = requestUrlMap.get(currentDomain);
-            for (const domain of differentServerDomain) {
+            for (const domain of differentServerDomain(currentDomain)) {
                 if (requestUrlMap.has(domain)) {
                     const differentDomainCountOfRequests =
                         requestUrlMap.get(domain);
@@ -94,18 +94,23 @@ function requestSwitcher() {
                         currentDomain = domain;
                         break;
                     }
+                } else {
+                    if (countOfRequests > MAX_ALLOWED_REQUESTS_DISTANCE) {
+                        currentDomain = domain;
+                        requestUrlMap.set(domain, 1);
+                        break;
+                    }
+
+                    requestUrlMap.set(domain, 0);
                 }
             }
         } else {
             requestUrlMap.set(currentDomain, 0);
         }
 
-        const redirectedRequest = new Request(currentDomain, request.clone());
-        const redirectedDomain = new URL(redirectedRequest.url).origin;
-        requestUrlMap.set(
-            redirectedDomain + url.pathname,
-            requestUrlMap.get(redirectedDomain) + 1,
+        requestUrlMap.set(currentDomain, requestUrlMap.get(currentDomain) + 1);
+        return fetch(
+            new Request(currentDomain + url.pathname, request.clone()),
         );
-        return fetch(redirectedRequest);
     };
 }
